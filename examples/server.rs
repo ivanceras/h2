@@ -1,7 +1,8 @@
 use h2::server;
 
 use bytes::*;
-use http::{Response, StatusCode};
+use http::uri;
+use http::{Request, Response, StatusCode};
 
 use std::error::Error;
 use tokio::net::{TcpListener, TcpStream};
@@ -34,8 +35,25 @@ async fn handle(socket: TcpStream) -> Result<(), Box<dyn Error>> {
         println!("GOT request: {:?}", request);
         let response = Response::builder().status(StatusCode::OK).body(()).unwrap();
 
+        let mut pushed_uri_parts: uri::Parts  = request.into_parts().0.uri.into();
+        pushed_uri_parts.path_and_query = uri::PathAndQuery::from_static("/pushed").into();
+
+        let pushed_req = Request::builder()
+            .uri(uri::Uri::from_parts(pushed_uri_parts).unwrap())
+            .body(())
+            .unwrap();
+
+        let pushed_rsp = http::Response::builder().status(200).body(()).unwrap();
+        let mut send_pushed = respond
+            .push_request(pushed_req)
+            .unwrap()
+            .send_response(pushed_rsp, false)
+            .unwrap();
+
         let mut send = respond.send_response(response, false)?;
 
+        println!(">>>> pushing data");
+        send_pushed.send_data(Bytes::from_static(b"Pushed data!\n"), true)?;
         println!(">>>> sending data");
         send.send_data(Bytes::from_static(b"hello world"), true)?;
     }
