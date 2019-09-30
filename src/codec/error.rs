@@ -60,6 +60,9 @@ pub enum UserError {
 
     /// Calls `PingPong::send_ping` before receiving a pong.
     SendPingWhilePending,
+
+    /// Pushed request while disabled
+    PushedRequestNotAllowed,
 }
 
 // ===== impl RecvError =====
@@ -140,6 +143,7 @@ impl error::Error for UserError {
             MissingUriSchemeAndAuthority => "request URI missing scheme and authority",
             PollResetAfterSendResponse => "poll_reset after send_response is illegal",
             SendPingWhilePending => "send_ping before received previous pong",
+            PushedRequestNotAllowed => "push request attempted while disabled by remote peer"
         }
     }
 }

@@ -23,6 +23,9 @@ pub(super) struct Send {
 
     /// Prioritization layer
     prioritize: Prioritize,
+
+    /// Can push requests
+    push_enabled: bool,
 }
 
 /// A value to detect which public API has called `poll_reset`.
@@ -39,6 +42,7 @@ impl Send {
             init_window_sz: config.remote_init_window_sz,
             next_stream_id: Ok(config.local_next_stream_id),
             prioritize: Prioritize::new(config),
+            push_enabled: true,
         }
     }
 
@@ -90,6 +94,10 @@ impl Send {
             frame,
             self.init_window_sz
         );
+
+        if !self.push_enabled {
+            return Err(UserError::PushedRequestNotAllowed);
+        }
 
         Self::check_headers(frame.fields())?;
 
@@ -389,6 +397,8 @@ impl Send {
         counts: &mut Counts,
         task: &mut Option<Waker>,
     ) -> Result<(), RecvError> {
+        self.push_enabled = settings.is_push_enabled();
+
         // Applies an update to the remote endpoint's initial window size.
         //
         // Per RFC 7540 §6.9.2:
